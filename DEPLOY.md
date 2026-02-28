@@ -24,6 +24,8 @@ export BOT_TOKEN='<YOUR_BOT_TOKEN>'
 export DOMAIN='bot.example.com'
 # 可选：仅在你要启用 GitHub 自动部署 webhook 时设置
 export GITHUB_WEBHOOK_SECRET='<YOUR_GITHUB_WEBHOOK_SECRET>'
+# 可选：Certbot 注册邮箱（不设会默认 admin@你的主域）
+export CERTBOT_EMAIL='ops@example.com'
 
 bash deploy-aliyun.sh
 ```

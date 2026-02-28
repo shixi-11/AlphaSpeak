@@ -58,7 +58,7 @@ WorkingDirectory=/opt/alphaspeak
 Environment="BOT_TOKEN=${BOT_TOKEN}"
 Environment="GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}"
 Environment="TTS_ENABLED=false"
-ExecStart=/opt/alphaspeak/venv/bin/python webhook.py
+ExecStart=/opt/alphaspeak/venv/bin/gunicorn -w 2 -b 127.0.0.1:8080 webhook:app
 Restart=always
 RestartSec=10
 

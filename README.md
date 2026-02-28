@@ -86,6 +86,7 @@ ssh root@your-server-ip
 cd /opt/alphaspeak
 export BOT_TOKEN=<YOUR_BOT_TOKEN>
 export DOMAIN=bot.example.com
+export CERTBOT_EMAIL=ops@example.com  # 可选
 bash deploy-aliyun.sh
 ```
 

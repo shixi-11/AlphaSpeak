@@ -4,6 +4,7 @@
 #   export BOT_TOKEN="<YOUR_BOT_TOKEN>"
 #   export DOMAIN="bot.example.com"
 #   export GITHUB_WEBHOOK_SECRET="<OPTIONAL_SECRET>"   # 可选
+#   export CERTBOT_EMAIL="ops@example.com"              # 可选
 #   bash deploy-aliyun.sh
 
 set -euo pipefail
@@ -20,6 +21,12 @@ fi
 
 APP_DIR="/opt/alphaspeak"
 PY_BIN="/usr/bin/python3"
+
+CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@${DOMAIN#*.}}"
+if [[ "$CERTBOT_EMAIL" != *"@"* ]]; then
+  echo "❌ CERTBOT_EMAIL 格式无效: $CERTBOT_EMAIL"
+  exit 1
+fi
 
 echo "[1/9] 安装系统依赖..."
 apt-get update -y
@@ -92,7 +99,7 @@ nginx -t
 systemctl restart nginx
 
 echo "[7/9] 申请 HTTPS 证书..."
-certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "admin@${DOMAIN}" --redirect
+certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$CERTBOT_EMAIL" --redirect
 
 echo "[8/9] 设置 Telegram Webhook..."
 WEBHOOK_URL="https://${DOMAIN}/webhook"
