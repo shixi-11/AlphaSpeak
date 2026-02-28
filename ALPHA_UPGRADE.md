@@ -154,12 +154,12 @@
 2. **检查配置**：
    - Start Command: `gunicorn webhook:app`
    - Environment Variables:
-     - `BOT_TOKEN=8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M`
+     - `BOT_TOKEN=<YOUR_BOT_TOKEN>`
      - `TTS_ENABLED=true`（可选）
 
 3. **设置 Webhook**：
    ```
-   https://api.telegram.org/bot8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M/setWebhook?url=https://alphaspeak.onrender.com/webhook
+   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://alphaspeak.onrender.com/webhook
    ```
 
 4. **测试机器人**：

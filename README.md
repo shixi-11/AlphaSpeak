@@ -77,16 +77,16 @@ Alpha 拥有阳光灿烂的少年音，会在以下场景为你发音：
    - `BOT_TOKEN` - Telegram Bot API Token
    - `TTS_ENABLED` - 是否启用语音 (true/false)
 3. Build Command: `pip install -r requirements.txt`
-4. Start Command: `gunicorn webhook:app`
+4. Start Command: `gunicorn webhook:app --bind 0.0.0.0:$PORT`
 
-### 阿里云部署
+### 阿里云轻量服务器（推荐）
 
 ```bash
-# SSH 登录服务器
 ssh root@your-server-ip
-
-# 执行部署脚本
-bash deploy.sh
+cd /opt/alphaspeak
+export BOT_TOKEN=<YOUR_BOT_TOKEN>
+export DOMAIN=bot.example.com
+bash deploy-aliyun.sh
 ```
 
 ---

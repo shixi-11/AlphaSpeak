@@ -28,12 +28,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 机器人配置
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 TTS_ENABLED = os.getenv("TTS_ENABLED", "true").lower() == "true"
-GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "alphaspeak2026")
+GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
 
 # Flask 应用
 app = Flask(__name__)
+
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable is required")
+
+if not GITHUB_WEBHOOK_SECRET:
+    logger.warning("GITHUB_WEBHOOK_SECRET is not set; /github-webhook auto-deploy endpoint is disabled")
+
 
 # ============= 🎨 Alpha 人设配置 =============
 ALPHA_PERSONA = {
@@ -410,6 +417,9 @@ def telegram_webhook():
 @app.route('/github-webhook', methods=['POST'])
 def github_webhook():
     """GitHub Webhook - 自动部署"""
+    if not GITHUB_WEBHOOK_SECRET:
+        return 'GitHub webhook secret not configured', 503
+
     try:
         signature = request.headers.get('X-Hub-Signature-256', '')
         payload = request.get_data()
