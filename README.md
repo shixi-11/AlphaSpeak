@@ -90,6 +90,12 @@ export CERTBOT_EMAIL=ops@example.com  # 可选
 bash deploy-aliyun.sh
 ```
 
+冲突处理（当 PR 显示 conflicts）：
+
+```bash
+bash sync-main.sh origin main
+```
+
 ---
 
 ## 💡 学习建议

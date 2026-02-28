@@ -59,3 +59,18 @@ systemctl restart alphaspeak
 # 更新代码并重启
 cd /opt/alphaspeak && git pull --ff-only origin main && systemctl restart alphaspeak
 ```
+
+## 5. PR 冲突快速处理（可选）
+
+如果 GitHub 提示 `This branch has conflicts that must be resolved`，可以在本地执行：
+
+```bash
+cd /opt/alphaspeak
+bash sync-main.sh origin main
+```
+
+脚本会：
+- 拉取远端主分支
+- 尝试合并到当前分支
+- 若有冲突，列出冲突文件并提示下一步操作
+
