@@ -4,9 +4,7 @@ services:
     env: python
     region: oregon
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn webhook:app --bind 0.0.0.0:$PORT"
+    startCommand: "python bot.py"
     envVars:
       - key: BOT_TOKEN
-        sync: false
-      - key: GITHUB_WEBHOOK_SECRET
         sync: false

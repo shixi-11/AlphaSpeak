@@ -39,7 +39,7 @@ if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN environment variable is required")
 
 if not GITHUB_WEBHOOK_SECRET:
-    logger.warning("GITHUB_WEBHOOK_SECRET is not set; /github-webhook auto-deploy endpoint is disabled")
+    raise RuntimeError("GITHUB_WEBHOOK_SECRET environment variable is required")
 
 
 # ============= 🎨 Alpha 人设配置 =============
@@ -417,9 +417,6 @@ def telegram_webhook():
 @app.route('/github-webhook', methods=['POST'])
 def github_webhook():
     """GitHub Webhook - 自动部署"""
-    if not GITHUB_WEBHOOK_SECRET:
-        return 'GitHub webhook secret not configured', 503
-
     try:
         signature = request.headers.get('X-Hub-Signature-256', '')
         payload = request.get_data()
@@ -472,8 +469,6 @@ application = None
 
 def post_init():
     global application
-    if application is not None:
-        return
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
@@ -488,9 +483,8 @@ def post_init():
     
     logger.info("Alpha bot initialized with nickname feature! 🌟")
 
-post_init()
-
 if __name__ == "__main__":
+    post_init()
     port = int(os.getenv('PORT', 8080))
     logger.info(f"Starting Alpha bot on port {port}...")
     app.run(host='0.0.0.0', port=port)

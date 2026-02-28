@@ -16,8 +16,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 
-if [ -z "${BOT_TOKEN}" ]; then
-    echo -e "${RED}错误：请先导出 BOT_TOKEN 环境变量${NC}"
+if [ -z "${BOT_TOKEN}" ] || [ -z "${GITHUB_WEBHOOK_SECRET}" ]; then
+    echo -e "${RED}错误：请先导出 BOT_TOKEN 和 GITHUB_WEBHOOK_SECRET 环境变量${NC}"
     exit 1
 fi
 
@@ -56,9 +56,9 @@ Type=simple
 User=root
 WorkingDirectory=/opt/alphaspeak
 Environment="BOT_TOKEN=${BOT_TOKEN}"
-Environment="GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}"
+Environment="GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}"
 Environment="TTS_ENABLED=false"
-ExecStart=/opt/alphaspeak/venv/bin/gunicorn -w 2 -b 127.0.0.1:8080 webhook:app
+ExecStart=/opt/alphaspeak/venv/bin/python webhook.py
 Restart=always
 RestartSec=10
 
