@@ -1,2 +1,13 @@
-# AlphaSpeak
-AlphaSpeak – AI English Training Telegram Bot
+# AlphaSpeak - 您的专属英语训练机器人
+
+一个融合商务、区块链、Web3主题的智能英语学习机器人，专为中文用户设计！
+
+## 特色功能
+- 🎯 商务/区块链/Web3专业词汇
+- 📚 词源历史 + 谐音梗解析  
+- 😄 幽默有趣的互动风格
+- 📊 个性化学习进度跟踪
+- 🗣️ 美式发音练习
+
+## 部署
+支持 Render 免费云服务一键部署！
