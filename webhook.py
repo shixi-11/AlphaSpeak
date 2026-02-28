@@ -472,6 +472,8 @@ application = None
 
 def post_init():
     global application
+    if application is not None:
+        return
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
@@ -486,8 +488,9 @@ def post_init():
     
     logger.info("Alpha bot initialized with nickname feature! 🌟")
 
+post_init()
+
 if __name__ == "__main__":
-    post_init()
     port = int(os.getenv('PORT', 8080))
     logger.info(f"Starting Alpha bot on port {port}...")
     app.run(host='0.0.0.0', port=port)

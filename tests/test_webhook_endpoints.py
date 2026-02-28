@@ -11,6 +11,9 @@ class WebhookEndpointTests(unittest.TestCase):
         cls.webhook = importlib.import_module('webhook')
         cls.client = cls.webhook.app.test_client()
 
+    def test_application_initialized_for_wsgi(self):
+        self.assertIsNotNone(self.webhook.application)
+
     def test_health_ok(self):
         resp = self.client.get('/health')
         self.assertEqual(resp.status_code, 200)
