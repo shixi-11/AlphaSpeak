@@ -309,9 +309,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Webhook 处理
 @app.route('/webhook', methods=['POST'])
-async def webhook():
+def webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.process_update(update)
+    application.process_update(update)
     return 'ok'
 
 @app.route('/health', methods=['GET'])
