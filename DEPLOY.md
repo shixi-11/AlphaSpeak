@@ -42,7 +42,7 @@ sleep 3
 NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
 
 # 设置 Webhook
-curl -s "https://api.telegram.org/bot8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M/setWebhook?url=$NGROK_URL/webhook"
+curl -s "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=$NGROK_URL/webhook"
 ```
 
 #### 方案 B：使用阿里云 SSL（正式）
@@ -53,7 +53,7 @@ curl -s "https://api.telegram.org/bot8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0I
 
 在浏览器访问：
 ```
-https://api.telegram.org/bot8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M/getWebhookInfo
+https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo
 ```
 
 看到 `"url": "https://..."` 即成功！

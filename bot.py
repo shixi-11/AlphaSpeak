@@ -29,7 +29,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 机器人配置
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable is required")
 
 # 学习主题词汇库
 VOCABULARY_DB = {
