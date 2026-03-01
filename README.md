@@ -48,38 +48,28 @@ pip install -r requirements.txt
 # 4. 设置环境变量
 export BOT_TOKEN="你的 BOT_TOKEN"
 
-# 5. 运行机器人
-python bot_simple.py
-```
+1. 连接 GitHub 仓库
+2. 设置环境变量：
+   - `BOT_TOKEN` - Telegram Bot API Token
+   - `TTS_ENABLED` - 是否启用语音 (true/false)
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `gunicorn webhook:app --bind 0.0.0.0:$PORT`
 
-### 使用 systemd 服务
+### 阿里云轻量服务器（推荐）
 
 ```bash
-# 创建服务文件
-cat > /etc/systemd/system/alphaspeak.service << EOF
-[Unit]
-Description=AlphaSpeak English Learning Bot
-After=network.target
+ssh root@your-server-ip
+cd /opt/alphaspeak
+export BOT_TOKEN=<YOUR_BOT_TOKEN>
+export DOMAIN=bot.example.com
+export CERTBOT_EMAIL=ops@example.com  # 可选
+bash deploy-aliyun.sh
+```
 
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/alphaspeak
-Environment="BOT_TOKEN=你的 BOT_TOKEN"
-ExecStart=/opt/alphaspeak/venv/bin/python bot_simple.py
-Restart=always
+冲突处理（当 PR 显示 conflicts）：
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# 启动服务
-systemctl daemon-reload
-systemctl enable alphaspeak
-systemctl start alphaspeak
-
-# 查看日志
-journalctl -u alphaspeak -f
+```bash
+bash sync-main.sh origin main
 ```
 
 ## 获取 Bot Token
