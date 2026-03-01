@@ -1,58 +1,95 @@
 # AlphaSpeak - 美语陪练阿尔法 🌟
 
-你的阳光美语小伙伴，专注商务/区块链/Web3 词汇学习！
+> 你的阳光美语小伙伴，专注商务/区块链/Web3 词汇学习！
 
-## 特点
+**改造版本**：带语音功能 + 称呼选择 + 英语水平选择 + 智能复习
 
-- 🎯 CET-4 级别，商务/区块链/Web3 主题词汇
-- 🏛️ 词源故事解析，理解单词背后的历史
-- 🧠 中文谐音记忆法，轻松记单词
-- 😄 幽默互动风格，学习不枯燥
-- 👤 自定义称呼，更亲切的学习体验
+---
 
-## 命令列表
+## 🎨 Alpha 人设
+
+| 属性 | 描述 |
+|------|------|
+| **名称** | Alpha（阿尔法） |
+| **定位** | 阳光开朗的美语少年伙伴 |
+| **年龄** | 18 岁 |
+| **语气** | 活泼有趣、emoji 颜文字、谐音梗、故事化教学 |
+| **声音** | 阳光灿烂的少年音，元气满满、温暖治愈 |
+
+---
+
+## 📚 功能特性
+
+### 核心功能
+- ✅ **称呼选择**：7 种称呼可选（富公、富婆、小主人、少主、主公、可爱多、灭霸）
+- ✅ **英语水平**：4 个等级（新手、初级、中级、高级）
+- ✅ **每日词汇**：商务/区块链/Web3 主题，含词源 + 谐音梗
+- ✅ **单词测验**：选择题形式，自动记录错题
+- ✅ **智能复习**：基于遗忘曲线的复习提醒
+- ✅ **错题本**：自动归档易错词汇
+- ✅ **学习统计**：进度追踪 + 成就系统
+- ✅ **语音功能**：Alpha 用标准美音朗读单词和例句
+
+### 趣味元素
+- 🎭 多样化开场白（每次打招呼都不一样）
+- 🔥 学习 streak 系统（连续学习天数记录）
+- 🏆 成就徽章（"谐音梗大王"、"发音小达人"等）
+- 💬 幽默互动风格（偶尔撒娇卖萌）
+
+---
+
+## 🎯 命令列表
 
 | 命令 | 说明 |
 |------|------|
-| `/start` | 开始使用，选择称呼 |
+| `/start` | 开始使用，选择称呼和英语水平 |
 | `/daily` | 获取今日词汇练习 |
 | `/quiz` | 单词小测验 |
-| `/stats` | 查看学习统计 |
+| `/review` | 智能复习（基于遗忘曲线） |
+| `/mistakes` | 查看错题本 |
+| `/stats` | 学习数据统计 |
+| `/streak` | 连续学习天数 |
+| `/nickname` | 重新选择称呼 |
+| `/level` | 重新选择英语水平 |
 | `/help` | 帮助指南 |
 
-## 部署到阿里云服务器
+---
 
-### 一键部署（推荐）
+## 🚀 部署到阿里云服务器
+
+### 方式一：一键部署（推荐）
 
 ```bash
-# 下载部署脚本
+# 1. 下载部署脚本
+cd /opt
 wget https://raw.githubusercontent.com/shixi-11/AlphaSpeak/main/deploy.sh
+chmod +x deploy.sh
 
-# 运行部署
+# 2. 运行部署
 bash deploy.sh
 ```
 
-### 手动部署
+### 方式二：手动部署
 
 ```bash
-# 1. 安装依赖
-apt update && apt install -y python3 python3-pip python3-venv
+# 1. 克隆仓库
+cd /opt
+git clone https://github.com/shixi-11/AlphaSpeak.git
+cd AlphaSpeak
 
-# 2. 创建虚拟环境
+# 2. 安装 Python 和依赖
+apt update && apt install -y python3 python3-pip python3-venv
 python3 -m venv venv
 source venv/bin/activate
-
-# 3. 安装 Python 包
 pip install -r requirements.txt
 
-# 4. 设置环境变量
+# 3. 设置环境变量并运行
 export BOT_TOKEN="你的 BOT_TOKEN"
-
-# 5. 运行机器人
-python bot_simple.py
+export VOICE_ENABLED="true"  # 可选：开启语音功能
+python bot.py
 ```
 
-### 使用 systemd 服务
+### 方式三：使用 systemd 服务
 
 ```bash
 # 创建服务文件
@@ -66,8 +103,12 @@ Type=simple
 User=root
 WorkingDirectory=/opt/alphaspeak
 Environment="BOT_TOKEN=你的 BOT_TOKEN"
-ExecStart=/opt/alphaspeak/venv/bin/python bot_simple.py
+Environment="VOICE_ENABLED=true"
+ExecStart=/opt/alphaspeak/venv/bin/python bot.py
 Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -82,23 +123,123 @@ systemctl start alphaspeak
 journalctl -u alphaspeak -f
 ```
 
-## 获取 Bot Token
+---
+
+## 🔑 获取 Bot Token
 
 1. 在 Telegram 搜索 [@BotFather](https://t.me/BotFather)
 2. 发送 `/newbot` 创建新机器人
 3. 按照提示设置用户名
 4. 复制得到的 token，替换 `BOT_TOKEN`
 
-## 技术栈
+---
 
-- Python 3.8+
-- python-telegram-bot v20.7
-- Polling 模式（无需 webhook）
+## 🎙️ 语音功能配置
 
-## 许可证
+语音功能默认开启，如需集成真实 TTS：
+
+1. **ElevenLabs**（推荐，声音自然）
+```python
+# 在 send_voice_message 函数中集成
+import elevenlabs
+audio = elevenlabs.generate(text=text, voice="Josh")  # 少年音
+```
+
+2. **Azure TTS**（性价比高）
+```python
+from azure.cognitiveservices.speech import SpeechConfig, SpeechSynthesizer
+```
+
+3. **关闭语音**
+```bash
+export VOICE_ENABLED="false"
+```
+
+---
+
+## 📊 用户数据
+
+用户数据存储在内存中（简化版），生产环境建议：
+
+- SQLite（轻量级）
+- PostgreSQL（完整功能）
+- Redis（高性能）
+
+---
+
+## 🛠️ 技术栈
+
+- **语言**：Python 3.8+
+- **框架**：python-telegram-bot v20.7
+- **模式**：Polling（无需 webhook）
+- **语音**：可扩展 TTS 集成
+
+---
+
+## 📝 示例对话
+
+### 初次见面
+```
+🌟 欢迎来到 Alpha 的美语训练营！🌟
+
+我是 Alpha，你的阳光美语小伙伴~ (✧ω✧)
+
+在开始学习之前，让我更了解你吧！
+
+👑 第一步：选择称呼
+💰 富公
+💎 富婆
+👑 小主人
+🌟 少主
+⚔️ 主公
+🍦 可爱多
+🧤 灭霸
+
+━━━━━━━━━━
+
+📊 第二步：选择英语水平
+🌱 新手 - 刚开始学英语，从基础开始
+🌿 初级 - 有一点基础，继续加油
+🌳 中级 - 日常交流没问题
+🌲 高级 - 英语大佬，挑战高阶内容
+```
+
+### 每日词汇
+```
+🌟 小主人，今日词汇：LEVERAGE 🌟
+📍 主题：Business | 难度：🌳 中级
+
+🎙️ 【Alpha 发音】: /ˈliː.vər.ɪdʒ/
+
+📝 定义：利用（资源、优势等）
+💬 例句：We can leverage our existing customer base.
+🇨🇳 翻译：我们可以利用现有的客户群。
+
+🏛️ 词源故事：
+想象一下，阿基米德说过"给我一个支点，我能撬动地球"。
+leverage 就是这个"撬动"的力量！
+
+🧠 中文记忆法：
+联想：'leave' + 'rage' → 留下愤怒的力量来撬动成功！
+
+🎯 小挑战：用这个单词造个句子吧！(ง •̀_•́)ง
+```
+
+---
+
+## ⚠️ 注意事项
+
+1. **Polling 模式**：无需开放服务器端口，适合测试
+2. **语音成本**：可设置每日语音条数上限
+3. **数据安全**：生产环境请使用持久化存储
+4. **Token 安全**：不要将 BOT_TOKEN 提交到 GitHub
+
+---
+
+## 📄 许可证
 
 MIT License
 
 ---
 
-**Made with ❤️ by Alpha**
+**Made with ❤️ by Alpha** (✧ω✧)
