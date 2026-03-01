@@ -15,6 +15,12 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+
+if [ -z "${BOT_TOKEN}" ]; then
+    echo -e "${RED}错误：请先导出 BOT_TOKEN 环境变量${NC}"
+    exit 1
+fi
+
 # 1. 进入应用目录
 echo -e "${YELLOW}[1/6]${NC} 进入应用目录..."
 cd /opt/alphaspeak || { echo -e "${RED}错误：/opt/alphaspeak 目录不存在${NC}"; exit 1; }
@@ -49,10 +55,10 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/alphaspeak
-Environment="BOT_TOKEN=8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M"
-Environment="GITHUB_WEBHOOK_SECRET=alphaspeak2026"
+Environment="BOT_TOKEN=${BOT_TOKEN}"
+Environment="GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}"
 Environment="TTS_ENABLED=false"
-ExecStart=/opt/alphaspeak/venv/bin/python webhook.py
+ExecStart=/opt/alphaspeak/venv/bin/gunicorn -w 2 -b 127.0.0.1:8080 webhook:app
 Restart=always
 RestartSec=10
 

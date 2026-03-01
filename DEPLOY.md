@@ -1,63 +1,76 @@
-# AlphaSpeak 快速部署指南
+# AlphaSpeak 阿里云轻量服务器部署指南
 
-## 🚨 当前状态
+> 推荐生产方式：`webhook.py + gunicorn + nginx + HTTPS`。
 
-| 组件 | 状态 |
-|------|------|
-| GitHub 仓库 | ✅ 正常 |
-| Bot Token | ✅ 正常 |
-| Webhook | ❌ 需要 HTTPS |
+## 0. 前置条件
 
-## 🔧 修复步骤（3 步）
+- 你已准备好域名（例如 `bot.example.com`），并将 A 记录解析到阿里云轻量服务器公网 IP。
+- 服务器系统建议 Ubuntu 22.04。
+- 已将代码仓库 clone 到服务器 `/opt/alphaspeak`。
 
-### 步骤 1：SSH 登录阿里云
+## 1. SSH 登录服务器
 
 ```bash
-ssh root@47.236.42.143
+ssh root@<你的服务器IP>
 ```
 
-### 步骤 2：更新代码
+## 2. 设置环境变量并执行一键脚本
+
+在服务器执行：
 
 ```bash
 cd /opt/alphaspeak
-git pull origin main
+export BOT_TOKEN='<YOUR_BOT_TOKEN>'
+export DOMAIN='bot.example.com'
+# 可选：仅在你要启用 GitHub 自动部署 webhook 时设置
+export GITHUB_WEBHOOK_SECRET='<YOUR_GITHUB_WEBHOOK_SECRET>'
+# 可选：Certbot 注册邮箱（不设会默认 admin@你的主域）
+export CERTBOT_EMAIL='ops@example.com'
+
+bash deploy-aliyun.sh
 ```
 
-### 步骤 3：设置 HTTPS（2 选 1）
+脚本会自动完成：
+- 安装 Python/nginx/certbot
+- 建立 venv 并安装依赖
+- 生成 systemd 服务并启动 gunicorn
+- 配置 nginx 反向代理
+- 申请 HTTPS 证书
+- 调用 Telegram `setWebhook`
 
-#### 方案 A：使用 ngrok（最快）
+## 3. 验证部署
 
 ```bash
-# 安装 ngrok
-cd /tmp
-wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
-tar -xzf ngrok-v3-stable-linux-amd64.tgz
-mv ngrok /usr/local/bin/
-
-# 启动 ngrok
-nohup ngrok http 8080 > /var/log/ngrok.log 2>&1 &
-sleep 3
-
-# 获取 HTTPS URL
-NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
-
-# 设置 Webhook
-curl -s "https://api.telegram.org/bot8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M/setWebhook?url=$NGROK_URL/webhook"
+systemctl status alphaspeak --no-pager
+curl -s https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo
 ```
 
-#### 方案 B：使用阿里云 SSL（正式）
+如果 `getWebhookInfo` 返回的 `url` 是 `https://<你的域名>/webhook`，表示接入成功。
 
-需要配置 Nginx + SSL 证书。
+## 4. 常用运维命令
 
-## ✅ 验证
+```bash
+# 查看实时日志
+journalctl -u alphaspeak -f
 
-在浏览器访问：
+# 重启服务
+systemctl restart alphaspeak
+
+# 更新代码并重启
+cd /opt/alphaspeak && git pull --ff-only origin main && systemctl restart alphaspeak
 ```
-https://api.telegram.org/bot8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M/getWebhookInfo
+
+## 5. PR 冲突快速处理（可选）
+
+如果 GitHub 提示 `This branch has conflicts that must be resolved`，可以在本地执行：
+
+```bash
+cd /opt/alphaspeak
+bash sync-main.sh origin main
 ```
 
-看到 `"url": "https://..."` 即成功！
+脚本会：
+- 拉取远端主分支
+- 尝试合并到当前分支
+- 若有冲突，列出冲突文件并提示下一步操作
 
-## 📱 测试
-
-在 Telegram 发送 `/start`，应该看到称呼选择按钮！

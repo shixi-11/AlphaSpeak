@@ -3,6 +3,12 @@
 
 echo "🚀 开始修复 Telegram Webhook..."
 
+if [ -z "${BOT_TOKEN}" ]; then
+  echo "❌ 请先导出 BOT_TOKEN 环境变量"
+  exit 1
+fi
+
+
 # 1. 安装 ngrok
 echo "📦 安装 ngrok..."
 cd /tmp
@@ -22,7 +28,7 @@ echo "🌐 ngrok URL: $NGROK_URL"
 # 4. 设置 Telegram Webhook
 WEBHOOK_URL="$NGROK_URL/webhook"
 echo "🔗 设置 Webhook: $WEBHOOK_URL"
-curl -s "https://api.telegram.org/bot8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M/setWebhook?url=$WEBHOOK_URL"
+curl -s "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=$WEBHOOK_URL"
 
 echo ""
 echo "✅ 修复完成！"

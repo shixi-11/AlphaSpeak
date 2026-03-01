@@ -13,8 +13,10 @@ import asyncio
 import subprocess
 import hashlib
 import hmac
-from datetime import datetime
+import tempfile
+from datetime import datetime, timedelta
 from typing import Dict, List
+
 
 from flask import Flask, request, jsonify
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -28,12 +30,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 机器人配置
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8603041416:AAHMAVuUXQ0agNns9ZJW5VjngeOzwS0IC0M")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 TTS_ENABLED = os.getenv("TTS_ENABLED", "true").lower() == "true"
-GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "alphaspeak2026")
+GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
 
 # Flask 应用
 app = Flask(__name__)
+
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable is required")
+
+if not GITHUB_WEBHOOK_SECRET:
+    logger.warning("GITHUB_WEBHOOK_SECRET is not set; /github-webhook auto-deploy endpoint is disabled")
+
 
 # ============= 🎨 Alpha 人设配置 =============
 ALPHA_PERSONA = {
@@ -135,6 +144,11 @@ def get_user_data(user_id: int) -> Dict:
             "mastered_words": [],
             "weak_words": [],
             "achievements": [],
+            "mistake_words": {},
+            "review_queue": [],
+            "favorite_words": [],
+            "last_word": None,
+            "voice_enabled": TTS_ENABLED,
         }
     return USER_DATA[user_id]
 
@@ -171,6 +185,58 @@ def get_random_emoji():
 def get_random_kaomoji():
     return random.choice(ALPHA_PERSONA["kaomoji"])
 
+def find_word_data(word: str):
+    for theme, words in VOCABULARY_DB.items():
+        if word in words:
+            return theme, words[word]
+    return None, None
+
+def update_streak(user: Dict):
+    today = datetime.now().date()
+    last = user.get("last_practice")
+    if not last:
+        user["daily_streak"] = 1
+    else:
+        last_day = datetime.strptime(last, "%Y-%m-%d").date()
+        if last_day == today:
+            return
+        if last_day == today - timedelta(days=1):
+            user["daily_streak"] += 1
+        else:
+            user["daily_streak"] = 1
+    user["last_practice"] = str(today)
+
+def maybe_unlock_achievements(user: Dict):
+    if user["total_words_learned"] >= 1 and "首战告捷" not in user["achievements"]:
+        user["achievements"].append("首战告捷")
+    if user["daily_streak"] >= 7 and "坚持一周" not in user["achievements"]:
+        user["achievements"].append("坚持一周")
+    if len(user["favorite_words"]) >= 5 and "收藏家" not in user["achievements"]:
+        user["achievements"].append("收藏家")
+
+async def send_alpha_voice(update: Update, text: str, user: Dict):
+    if not user.get("voice_enabled"):
+        return
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
+            temp_path = f.name
+        from gtts import gTTS
+        gTTS(text=text, lang="en", tld="com").save(temp_path)
+        with open(temp_path, "rb") as audio_file:
+            await update.message.reply_voice(audio_file)
+    except ModuleNotFoundError:
+        logger.warning("gTTS not installed; voice is skipped")
+        await update.message.reply_text("🔇 当前环境未安装语音组件(gTTS)，先用文字继续学习～")
+    except Exception as e:
+        logger.warning(f"TTS generation failed: {e}")
+        await update.message.reply_text("🔇 语音生成这次失败啦，我先用文字继续带你学～")
+    finally:
+        try:
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                os.remove(temp_path)
+        except OSError:
+            pass
+
 # ============= 🤖 命令处理 =============
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -194,7 +260,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /daily - 每日词汇练习 📖
 /quiz - 单词小测验 🎯
 /streak - 连续学习天数 🔥
+/review - 智能复习 🧠
+/mistakes - 错题本 📌
+/fav - 收藏当前单词 ⭐
+/story [单词] - 单词故事 📖
+/streak - 连续学习天数 🔥
 /stats - 学习数据统计 📊
+/voice on|off - 语音开关 🎙️
 /nickname - 修改称呼 👤
 /help - 帮助指南 ❓
 
@@ -287,8 +359,14 @@ async def daily_vocabulary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     theme = vocab["theme"]
     
     user["total_words_learned"] += 1
+    user["last_word"] = word
     if word not in user["mastered_words"]:
         user["mastered_words"].append(word)
+    if word not in user["review_queue"]:
+        user["review_queue"].append(word)
+
+    update_streak(user)
+    maybe_unlock_achievements(user)
     
     message = f"""
 {get_random_emoji()} **{nickname}，今日词汇：{word.upper()}** {get_random_emoji()}
@@ -308,6 +386,7 @@ async def daily_vocabulary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🎯 **小挑战**：用这个单词造个句子吧！{get_random_kaomoji()}
     """
     await update.message.reply_text(message)
+    await send_alpha_voice(update, f"{word}. {data['example']}", user)
 
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /quiz 命令 - 小测验"""
@@ -351,10 +430,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         correct = parts[1]
         selected = parts[2]
         
+        user = get_user_data(user_id)
         if selected == correct:
             await query.edit_message_text(f"✅ {nickname} 太棒了！答对了！{get_random_kaomoji()}")
         else:
-            await query.edit_message_text(f"❌ {nickname}，正确答案是：{correct}\n\n加油！💪")
+            user["mistake_words"][correct] = user["mistake_words"].get(correct, 0) + 1
+            if correct not in user["weak_words"]:
+                user["weak_words"].append(correct)
+            await query.edit_message_text(f"❌ {nickname}，正确答案是：{correct}\n\n我已把它放进你的错题本啦，输入 /mistakes 复习～💪")
 
 async def streak(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /streak 命令"""
@@ -371,7 +454,96 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📚 已学：{user['total_words_learned']} 词
 🔥 连续：{user['daily_streak']} 天
 🏆 成就：{len(user['achievements'])} 个
+⭐ 收藏：{len(user['favorite_words'])} 词
+📌 错题：{len(user['mistake_words'])} 词
     """)
+
+
+async def review(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /review 命令 - 智能复习"""
+    user = get_user_data(update.effective_user.id)
+    nickname = get_nickname(update.effective_user.id) or "小伙伴"
+
+    if not user["review_queue"]:
+        await update.message.reply_text(f"🧠 {nickname}，今天的复习队列空空的！先来 /daily 学一个新词吧~")
+        return
+
+    word = random.choice(user["review_queue"])
+    theme, data = find_word_data(word)
+    if not data:
+        await update.message.reply_text("今天复习卡片生成失败了，稍后再试试～")
+        return
+
+    msg = f"""
+🧠 **复习时间到！**
+
+⭐ 单词：**{word.upper()}**
+📍 主题：{theme.title()}
+📝 释义：{data['definition']}
+💬 例句：{data['example']}
+
+挑战：请用它自己造句，我来帮你改！
+"""
+    await update.message.reply_text(msg)
+    await send_alpha_voice(update, f"Review word {word}. {data['example']}", user)
+
+async def mistakes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /mistakes 命令"""
+    user = get_user_data(update.effective_user.id)
+    nickname = get_nickname(update.effective_user.id) or "小伙伴"
+    if not user["mistake_words"]:
+        await update.message.reply_text(f"🎉 {nickname}，你还没有错题！继续保持！")
+        return
+
+    top_items = sorted(user["mistake_words"].items(), key=lambda x: x[1], reverse=True)[:10]
+    lines = [f"- {w}: 错了 {c} 次" for w, c in top_items]
+    await update.message.reply_text("📌 **你的错题本（Top10）**\n" + "\n".join(lines))
+
+async def fav(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /fav 命令"""
+    user = get_user_data(update.effective_user.id)
+    nickname = get_nickname(update.effective_user.id) or "小伙伴"
+    last_word = user.get("last_word")
+    if not last_word:
+        await update.message.reply_text(f"⭐ {nickname}，你还没有最近学习的单词，先 /daily 一下吧！")
+        return
+    if last_word not in user["favorite_words"]:
+        user["favorite_words"].append(last_word)
+    maybe_unlock_achievements(user)
+    await update.message.reply_text(f"⭐ 已收藏 **{last_word}** 到你的个人词库！")
+
+async def story(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /story [word] 命令"""
+    user = get_user_data(update.effective_user.id)
+    nickname = get_nickname(update.effective_user.id) or "小伙伴"
+    if not context.args:
+        await update.message.reply_text(f"📖 {nickname}，用法：`/story leverage`")
+        return
+
+    word = context.args[0].lower()
+    _, data = find_word_data(word)
+    if not data:
+        await update.message.reply_text(f"🤔 词库里暂时没有 `{word}`，你可以先 /daily 试试看！")
+        return
+
+    await update.message.reply_text(f"📖 **{word.upper()} 的故事**\n{data.get('story', data['etymology'])}")
+    await send_alpha_voice(update, f"Story of {word}. {data.get('example', '')}", user)
+
+async def voice_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /voice on|off 命令"""
+    user = get_user_data(update.effective_user.id)
+    if not context.args:
+        state = "on" if user.get("voice_enabled") else "off"
+        await update.message.reply_text(f"🎙️ 当前语音状态：**{state}**。用 `/voice on` 或 `/voice off` 切换")
+        return
+
+    arg = context.args[0].lower()
+    if arg not in {"on", "off"}:
+        await update.message.reply_text("用法：`/voice on` 或 `/voice off`")
+        return
+
+    user["voice_enabled"] = arg == "on"
+    await update.message.reply_text(f"🎙️ 语音功能已{'开启' if user['voice_enabled'] else '关闭'}")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /help 命令"""
@@ -382,8 +554,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 **📚 学习功能**：
 /daily - 每日词汇
 /quiz - 小测验
+/review - 智能复习
+/mistakes - 错题本
+/fav - 收藏当前词
+/story [单词] - 单词故事
 /streak - 连续天数
 /stats - 学习统计
+/voice on|off - 语音开关
 /nickname - 修改称呼
 
 **💡 学习建议**：
@@ -410,6 +587,9 @@ def telegram_webhook():
 @app.route('/github-webhook', methods=['POST'])
 def github_webhook():
     """GitHub Webhook - 自动部署"""
+    if not GITHUB_WEBHOOK_SECRET:
+        return 'GitHub webhook secret not configured', 503
+
     try:
         signature = request.headers.get('X-Hub-Signature-256', '')
         payload = request.get_data()
@@ -462,11 +642,18 @@ application = None
 
 def post_init():
     global application
+    if application is not None:
+        return
     application = Application.builder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("daily", daily_vocabulary))
     application.add_handler(CommandHandler("quiz", quiz))
+    application.add_handler(CommandHandler("review", review))
+    application.add_handler(CommandHandler("mistakes", mistakes))
+    application.add_handler(CommandHandler("fav", fav))
+    application.add_handler(CommandHandler("story", story))
+    application.add_handler(CommandHandler("voice", voice_toggle))
     application.add_handler(CommandHandler("streak", streak))
     application.add_handler(CommandHandler("stats", stats))
     application.add_handler(CommandHandler("nickname", nickname_command))
@@ -476,8 +663,9 @@ def post_init():
     
     logger.info("Alpha bot initialized with nickname feature! 🌟")
 
+post_init()
+
 if __name__ == "__main__":
-    post_init()
     port = int(os.getenv('PORT', 8080))
     logger.info(f"Starting Alpha bot on port {port}...")
     app.run(host='0.0.0.0', port=port)
